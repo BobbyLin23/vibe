@@ -84,8 +84,8 @@ importers:
         specifier: ^2.0.2
         version: 2.0.2
       zod:
-        specifier: ^4.0.17
-        version: 4.0.17
+        specifier: 3.25.67
+        version: 3.25.67
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^5.2.1
@@ -6641,11 +6641,8 @@ packages:
   zod@3.22.5:
     resolution: {integrity: sha512-HqnGsCdVZ2xc0qWPLdO25WnseXThh0kEYKIdV5F/hTHO75hNZFp8thxSeHhiPrHZKrFTo1SOgkAj9po5bexZlw==}
 
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
-
-  zod@4.0.17:
-    resolution: {integrity: sha512-1PHjlYRevNxxdy2JZ8JcNAw7rX8V9P1AKkP+x/xZfxB0K5FYfuV+Ug6P/6NVSR2jHQ+FzDDoDHS04nYUsOIyLQ==}
+  zod@3.25.67:
+    resolution: {integrity: sha512-idA2YXwpCdqUSKRCACDE6ItZD9TZzy3OZMtpfLoh6oPR47lipysRrJfjzMqFxQ3uJuUPyUeWe1r9vLH33xO/Qw==}
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
@@ -6923,7 +6920,7 @@ snapshots:
 
   '@dmitryrechkin/json-schema-to-zod@1.0.1':
     dependencies:
-      zod: 3.25.76
+      zod: 3.25.67
 
   '@drizzle-team/brocli@0.10.2': {}
 
@@ -7342,8 +7339,8 @@ snapshots:
       express: 4.21.2
       inngest: 3.40.1(express@5.1.0)(h3@1.15.4)(typescript@5.9.2)
       xxhashjs: 0.2.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.24.6(zod@3.25.76)
+      zod: 3.25.67
+      zod-to-json-schema: 3.24.6(zod@3.25.67)
     transitivePeerDependencies:
       - supports-color
 
@@ -7436,8 +7433,8 @@ snapshots:
       express-rate-limit: 7.5.1(express@5.1.0)
       pkce-challenge: 5.0.0
       raw-body: 3.0.0
-      zod: 3.25.76
-      zod-to-json-schema: 3.24.6(zod@3.25.76)
+      zod: 3.25.67
+      zod-to-json-schema: 3.24.6(zod@3.25.67)
     transitivePeerDependencies:
       - supports-color
 
@@ -7542,7 +7539,7 @@ snapshots:
       unixify: 1.0.0
       urlpattern-polyfill: 8.0.2
       yargs: 17.7.2
-      zod: 3.25.76
+      zod: 3.25.67
     transitivePeerDependencies:
       - encoding
       - rollup
@@ -14088,14 +14085,12 @@ snapshots:
       compress-commons: 6.0.2
       readable-stream: 4.7.0
 
-  zod-to-json-schema@3.24.6(zod@3.25.76):
+  zod-to-json-schema@3.24.6(zod@3.25.67):
     dependencies:
-      zod: 3.25.76
+      zod: 3.25.67
 
   zod@3.22.5: {}
 
-  zod@3.25.76: {}
-
-  zod@4.0.17: {}
+  zod@3.25.67: {}
 
   zwitch@2.0.4: {}
