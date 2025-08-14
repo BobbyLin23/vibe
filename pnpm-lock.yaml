@@ -59,6 +59,9 @@ importers:
       nuxt:
         specifier: ^4.0.3
         version: 4.0.3(@netlify/blobs@9.1.2)(@parcel/watcher@2.5.1)(@types/node@24.2.1)(@vue/compiler-sfc@3.5.18)(db0@0.3.2(drizzle-orm@0.44.4(@neondatabase/serverless@1.0.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.5)))(drizzle-orm@0.44.4(@neondatabase/serverless@1.0.1)(@opentelemetry/api@1.9.0)(@types/pg@8.15.5))(eslint@9.33.0(jiti@2.5.1))(ioredis@5.7.0)(lightningcss@1.30.1)(magicast@0.3.5)(optionator@0.9.4)(rollup@4.46.2)(terser@5.43.1)(typescript@5.9.2)(vite@7.1.1(@types/node@24.2.1)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.43.1)(yaml@2.8.1))(yaml@2.8.1)
+      random-word-slugs:
+        specifier: ^0.1.7
+        version: 0.1.7
       reka-ui:
         specifier: ^2.4.1
         version: 2.4.1(typescript@5.9.2)(vue@3.5.18(typescript@5.9.2))
@@ -5611,6 +5614,9 @@ packages:
 
   radix3@1.1.2:
     resolution: {integrity: sha512-b484I/7b8rDEdSDKckSSBA8knMpcdsXudlE/LNL639wFoHKwLbEkQFZHWEYwDC0wa0FKUcCY+GAF73Z7wxNVFA==}
+
+  random-word-slugs@0.1.7:
+    resolution: {integrity: sha512-8cyzxOIDeLFvwSPTgCItMXHGT5ZPkjhuFKUTww06Xg1dNMXuGxIKlARvS7upk6JXIm41ZKXmtlKR1iCRWklKmg==}
 
   randombytes@2.1.0:
     resolution: {integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==}
@@ -12958,6 +12964,8 @@ snapshots:
   radash@12.1.1: {}
 
   radix3@1.1.2: {}
+
+  random-word-slugs@0.1.7: {}
 
   randombytes@2.1.0:
     dependencies:

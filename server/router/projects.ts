@@ -1,39 +1,45 @@
 import { desc } from 'drizzle-orm'
+import { generateSlug } from 'random-word-slugs'
 import { z } from 'zod'
 import { db } from '../db'
-import { message } from '../db/schema'
+import { message, project } from '../db/schema'
 import { inngest } from '../inngest'
 import { pub } from '../utils/orpc'
 
 export const create = pub.route({
   method: 'POST',
-  path: '/messages',
+  path: '/projects',
 }).input(z.object({
   value: z.string().min(1, { message: 'Message is required' }).max(10000, { message: 'Message cannot exceed 10000 characters' }),
-  projectId: z.string().min(1, { message: 'Project ID is required' }),
 })).handler(async ({ input }) => {
-  const [newMessage] = await db.insert(message).values({
+  const [newProject] = await db.insert(project).values({
+    name: generateSlug(2, {
+      format: 'kebab',
+    }),
+  }).returning()
+
+  await db.insert(message).values({
+    projectId: newProject.id,
     content: input.value,
     role: 'user',
     type: 'result',
-    projectId: input.projectId,
-  }).returning()
+  })
 
   await inngest.send({
     name: 'code-agent/run',
     data: {
       value: input.value,
-      projectId: input.projectId,
+      projectId: newProject.id,
     },
   })
 
-  return newMessage
+  return newProject
 })
 
 export const getMany = pub.route({
   method: 'GET',
-  path: '/messages',
+  path: '/projects',
 }).handler(async () => {
-  const messages = await db.select().from(message).orderBy(desc(message.updatedAt))
-  return messages
+  const projects = await db.select().from(project).orderBy(desc(project.updatedAt))
+  return projects
 })
