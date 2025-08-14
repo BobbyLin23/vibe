@@ -1,8 +1,5 @@
-import { signup } from './auth'
+import * as messagesRouter from './messages'
 
 export const router = {
-  auth: {
-    signup,
-  },
-  planet: {},
+  messages: messagesRouter,
 }

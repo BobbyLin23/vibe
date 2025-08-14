@@ -1,4 +1,4 @@
 import { serve } from 'inngest/nuxt'
-import { functions, inngest } from '../inngest'
+import { codeAgentFunction, inngest } from '../inngest'
 
-export default defineEventHandler(serve({ client: inngest, functions }))
+export default defineEventHandler(serve({ client: inngest, functions: [codeAgentFunction] }))
