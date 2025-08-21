@@ -1,4 +1,5 @@
-import { desc } from 'drizzle-orm'
+import { ORPCError } from '@orpc/client'
+import { desc, eq } from 'drizzle-orm'
 import { generateSlug } from 'random-word-slugs'
 import { z } from 'zod'
 import { db } from '../db'
@@ -42,4 +43,21 @@ export const getMany = pub.route({
 }).handler(async () => {
   const projects = await db.select().from(project).orderBy(desc(project.updatedAt))
   return projects
+})
+
+export const getOne = pub.route({
+  method: 'GET',
+  path: '/projects/:id',
+}).input(z.object({
+  id: z.string().min(1, { message: 'Project ID is required' }),
+})).handler(async ({ input }) => {
+  const [res] = await db.select().from(project).where(eq(project.id, input.id))
+
+  if (!res) {
+    throw new ORPCError('NOT_FOUND', {
+      message: 'Project not found',
+    })
+  }
+
+  return res
 })

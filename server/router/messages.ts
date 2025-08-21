@@ -1,7 +1,7 @@
-import { desc } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { message } from '../db/schema'
+import { fragment, message } from '../db/schema'
 import { inngest } from '../inngest'
 import { pub } from '../utils/orpc'
 
@@ -33,7 +33,16 @@ export const create = pub.route({
 export const getMany = pub.route({
   method: 'GET',
   path: '/messages',
-}).handler(async () => {
-  const messages = await db.select().from(message).orderBy(desc(message.updatedAt))
+}).input(
+  z.object({
+    projectId: z.string().min(1, { message: 'Project ID is required' }),
+  }),
+).handler(async ({ input }) => {
+  const messages = await db.select()
+    .from(message)
+    .where(eq(message.projectId, input.projectId))
+    .orderBy(desc(message.updatedAt))
+    .leftJoin(fragment, eq(message.id, fragment.messageId))
+
   return messages
 })
