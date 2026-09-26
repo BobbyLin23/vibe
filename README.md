@@ -2,6 +2,26 @@
 
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
+## oRPC + Pinia Colada
+
+Procedures are plain TypeScript functions with runtime-validated input, called from the app like
+local functions (oRPC v2).
+
+- `server/router/` — the API. `base.ts` is the shared `os` builder (initial context: `headers`);
+  `hello.ts` and `users.ts` are procedures; `index.ts` assembles the router.
+- `server/routes/rpc/[...].ts` — serves the router over HTTP at `POST /rpc/<path>`.
+- `app/plugins/orpc.client.ts` / `orpc.server.ts` — provide `$client` (raw client) and `$orpc`
+  (Pinia Colada utils). In the browser `$client` uses `RPCLink` against `/rpc`; during SSR it is a
+  same-process `createRouterClient`, so server rendering never does an HTTP round trip.
+- Pages use `useQuery($orpc.user.list.queryOptions())` and
+  `useMutation($orpc.user.create.mutationOptions({ onSuccess: … }))`, invalidating
+  `$orpc.user.key()` after writes.
+
+Example pages: `/hello` (one query with a reactive input, no database) and `/users` (list, create
+and delete against the `users` table, including typed `CONFLICT` / `NOT_FOUND` errors).
+
+The `users` table is defined in `server/db/schema.ts`; apply schema changes with `pnpm db:push`.
+
 ## Setup
 
 Make sure to install dependencies:

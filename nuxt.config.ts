@@ -1,4 +1,4 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
+import "./env";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
@@ -11,7 +11,13 @@ export default defineNuxtConfig({
   vite: {
     plugins: [tailwindcss()],
   },
-  modules: ["shadcn-nuxt", "@vueuse/nuxt", "@nuxtjs/color-mode"],
+  modules: [
+    "shadcn-nuxt",
+    "@vueuse/nuxt",
+    "@nuxtjs/color-mode",
+    "@pinia/colada-nuxt",
+    "@pinia/nuxt",
+  ],
   shadcn: {
     prefix: "",
     componentDir: "@/components/ui",
