@@ -3,5 +3,6 @@
 <template>
   <div>
     <Button> Click </Button>
+    <ModeToggle />
   </div>
 </template>
