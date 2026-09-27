@@ -17,10 +17,32 @@ local functions (oRPC v2).
   `useMutation($orpc.user.create.mutationOptions({ onSuccess: … }))`, invalidating
   `$orpc.user.key()` after writes.
 
-Example pages: `/hello` (one query with a reactive input, no database) and `/users` (list, create
-and delete against the `users` table, including typed `CONFLICT` / `NOT_FOUND` errors).
+Example pages: `/hello` (one query with a reactive input, no database), `/users` (list, create
+and delete against the `users` table, including typed `CONFLICT` / `NOT_FOUND` errors) and
+`/inngest` (send a durable-function event through a mutation).
 
 The `users` table is defined in `server/db/schema.ts`; apply schema changes with `pnpm db:push`.
+
+## Inngest
+
+`/inngest` mutates `inngest.trigger`, which sends the `test/hello.world` event from the server —
+so the event key never reaches the browser — and returns the event IDs. The event is defined once
+in `inngest/events.ts` with `eventType()`, consumed by the `hello-world` function in
+`inngest/functions.ts` (one `step.sleep`), and served at `/api/inngest`
+(`server/api/inngest.ts`). A stopped dev server surfaces as the typed `INNGEST_UNREACHABLE`
+error.
+
+Run the Inngest dev server next to the app:
+
+```bash
+pnpm dev          # app on http://localhost:3012
+pnpm dev:inngest  # Inngest dev server on http://localhost:8288
+```
+
+The dev server discovers the app at `http://localhost:3012/api/inngest`; open
+`http://localhost:8288` to follow the runs. Inngest v4 defaults to Cloud mode, so local
+development needs `INNGEST_DEV=1` (see `.env.example`); production needs `INNGEST_EVENT_KEY`
+and `INNGEST_SIGNING_KEY`.
 
 ## Setup
 
@@ -42,7 +64,7 @@ bun install
 
 ## Development Server
 
-Start the development server on `http://localhost:3000`:
+Start the development server on `http://localhost:3012`:
 
 ```bash
 # npm

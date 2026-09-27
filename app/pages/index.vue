@@ -11,6 +11,12 @@ const examples = [
     description:
       "List, create and delete rows via Drizzle — queries, mutations and cache invalidation.",
   },
+  {
+    to: "/inngest",
+    title: "Inngest",
+    description:
+      "Send a durable-function event through a mutation — the run finishes on the Inngest dev server.",
+  },
 ];
 </script>
 

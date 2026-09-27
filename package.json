@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "dev:inngest": "pnpx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3012/api/inngest",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -28,6 +29,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "1.0.0-rc.4",
+    "inngest": "^4.21.0",
     "nuxt": "^4.5.2",
     "pinia": "^4.0.3",
     "reka-ui": "^2.10.5",
@@ -35,6 +37,7 @@
     "tailwind-merge": "^3.7.0",
     "vue": "^3.5.43",
     "vue-router": "^5.3.1",
+    "vue-sonner": "^2.0.9",
     "zod": "^4.6.5"
   },
   "devDependencies": {
