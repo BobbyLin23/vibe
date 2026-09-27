@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { inngest } from "~~/inngest/client";
+import { inngestUnreachable, isConnectionRefused } from "~~/inngest/errors";
 import { helloWorldEvent } from "~~/inngest/events";
 import { base } from "./base";
 
@@ -12,11 +13,7 @@ import { base } from "./base";
  * server: <http://localhost:8288>.
  */
 export const trigger = base
-  .errors({
-    INNGEST_UNREACHABLE: {
-      message: "Could not reach Inngest — run `pnpm dev:inngest` for local development",
-    },
-  })
+  .errors({ INNGEST_UNREACHABLE: inngestUnreachable })
   .input(
     z.object({
       message: z.string().trim().min(1).max(200),
@@ -31,16 +28,8 @@ export const trigger = base
         helloWorldEvent.create({ message: input.message }, { id: input.id }),
       );
     } catch (error) {
-      // A stopped server shows up as an undici transport failure: `TypeError: fetch failed`
-      // with the socket error on `cause`, aggregated per resolved address.
-      let current: unknown = error;
-
-      for (let depth = 0; depth < 5 && current instanceof Error; depth++) {
-        if ((current as { code?: unknown }).code === "ECONNREFUSED") {
-          throw errors.INNGEST_UNREACHABLE();
-        }
-
-        current = current.cause;
+      if (isConnectionRefused(error)) {
+        throw errors.INNGEST_UNREACHABLE();
       }
 
       throw error;

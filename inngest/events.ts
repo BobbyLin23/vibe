@@ -8,3 +8,14 @@ import { z } from "zod";
 export const helloWorldEvent = eventType("test/hello.world", {
   schema: z.object({ message: z.string().min(1) }),
 });
+
+/**
+ * Starts one coding-agent run. `runId` doubles as the realtime channel ID and the
+ * event ID, so a retried send cannot start a second run.
+ */
+export const codingAgentRequested = eventType("agent/coding.requested", {
+  schema: z.object({
+    runId: z.string().min(1),
+    prompt: z.string().min(1),
+  }),
+});

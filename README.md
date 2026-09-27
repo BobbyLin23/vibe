@@ -18,8 +18,9 @@ local functions (oRPC v2).
   `$orpc.user.key()` after writes.
 
 Example pages: `/hello` (one query with a reactive input, no database), `/users` (list, create
-and delete against the `users` table, including typed `CONFLICT` / `NOT_FOUND` errors) and
-`/inngest` (send a durable-function event through a mutation).
+and delete against the `users` table, including typed `CONFLICT` / `NOT_FOUND` errors),
+`/inngest` (send a durable-function event through a mutation) and `/agent` (run a coding agent
+and stream its progress).
 
 The `users` table is defined in `server/db/schema.ts`; apply schema changes with `pnpm db:push`.
 
@@ -39,10 +40,44 @@ pnpm dev          # app on http://localhost:3012
 pnpm dev:inngest  # Inngest dev server on http://localhost:8288
 ```
 
+`dev:inngest` calls the pinned `inngest-cli` dev dependency at
+`node_modules/inngest-cli/bin/inngest` directly: pnpm's bin shim wraps the native binary with
+`node`, so `pnpm exec inngest-cli` fails with a `SyntaxError`. The package's postinstall
+downloads the platform binary, which is why `inngest-cli` is listed under `allowBuilds` in
+`pnpm-workspace.yaml`.
+
 The dev server discovers the app at `http://localhost:3012/api/inngest`; open
 `http://localhost:8288` to follow the runs. Inngest v4 defaults to Cloud mode, so local
 development needs `INNGEST_DEV=1` (see `.env.example`); production needs `INNGEST_EVENT_KEY`
 and `INNGEST_SIGNING_KEY`.
+
+## Coding agent
+
+`/agent` runs a coding agent built with `@inngest/agent-kit` on DeepSeek's `deepseek-flash`
+model:
+
+- `inngest/agents/coding-agent.ts` — the agent plus its tools (`write_file`, `read_file`,
+  `list_files`). Each run gets its own in-memory scratch workspace, created inside the factory so
+  concurrent runs cannot see each other's files.
+- `inngest/functions.ts` — the durable `coding-agent` function. It runs the agent with
+  `agent.run(prompt, { step })`, so model calls become `step.ai.infer` steps that Inngest retries
+  and caches; tool calls report progress through `step.realtime.publish`, and an `onFailure`
+  handler publishes a failed result when the run exhausts its retries.
+- `inngest/channels.ts` — the per-run realtime channel `coding-agent:<runId>` with `progress` and
+  `result` topics.
+- `server/router/agent.ts` — `agent.run` (sends the event, returns the run ID) and
+  `agent.subscriptionToken` (mints a subscription token for that run's channel).
+- `app/pages/agent.vue` — a Pinia Colada mutation starts the run, then the page subscribes with
+  `subscribe()` from `inngest/realtime` and renders progress and the final answer.
+
+Set `DEEPSEEK_API_KEY` in `.env` (get one at <https://platform.deepseek.com/api_keys>) and
+restart the dev server; without it, `agent.run` fails with the typed `MISSING_API_KEY` error.
+`DEEPSEEK_BASE_URL` points the agent at an OpenAI-compatible gateway or a local test server
+instead of `https://api.deepseek.com`.
+
+Realtime channels are addressable by ID and this app has no authentication, so
+`agent.subscriptionToken` hands out a token for any run ID; a real app must check that the caller
+owns the run first.
 
 ## Setup
 

@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "dev:inngest": "pnpx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3012/api/inngest",
+    "dev:inngest": "node_modules/inngest-cli/bin/inngest dev -u http://localhost:3012/api/inngest",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@inngest/agent-kit": "^0.13.2",
     "@neondatabase/serverless": "^1.1.0",
     "@orpc/client": "2.0.0-beta.40",
     "@orpc/pinia-colada": "2.0.0-beta.40",
@@ -47,6 +48,7 @@
     "@vueuse/core": "^15.0.0",
     "@vueuse/nuxt": "^15.0.0",
     "drizzle-kit": "1.0.0-rc.4",
+    "inngest-cli": "^1.45.1",
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "tailwindcss": "^4.3.3",

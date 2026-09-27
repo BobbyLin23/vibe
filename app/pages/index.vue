@@ -17,6 +17,12 @@ const examples = [
     description:
       "Send a durable-function event through a mutation — the run finishes on the Inngest dev server.",
   },
+  {
+    to: "/agent",
+    title: "Coding agent",
+    description:
+      "An AgentKit agent on DeepSeek inside a durable function — start a run, then stream its progress.",
+  },
 ];
 </script>
 
