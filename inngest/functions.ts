@@ -1,4 +1,4 @@
-import { agentText, createCodingAgent } from "./agents/coding-agent";
+import { agentText, createCodingAgent, createSandbox, killSandbox } from "./agents/coding-agent";
 import { codingAgentChannel } from "./channels";
 import { inngest } from "./client";
 import { codingAgentRequested, helloWorldEvent } from "./events";
@@ -45,7 +45,15 @@ export const codingAgent = inngest.createFunction(
       ts: Date.now(),
     });
 
-    const { agent, workspace } = createCodingAgent({
+    // The sandbox outlives individual tool calls, so its ID is the one piece of run state
+    // the tools need; memoizing the step means a retry reconnects to the same machine.
+    const sandboxId = await step.run("create-sandbox", async () => {
+      const sandbox = await createSandbox();
+      return sandbox.sandboxId;
+    });
+
+    const { network, files } = createCodingAgent({
+      sandboxId,
       onProgress: (message) =>
         step.realtime.publish(`agent-progress-${progressCount++}`, channel.progress, {
           message,
@@ -53,14 +61,29 @@ export const codingAgent = inngest.createFunction(
         }),
     });
 
-    const result = await agent.run(prompt, { step, maxIter: 6 });
+    const result = await network.run(prompt);
+
+    const summary = result.state.data.summary;
+    const lastResult = result.state.results.at(-1);
 
     await step.realtime.publish("agent-result", channel.result, {
       status: "completed",
-      text: agentText(result),
-      files: [...workspace.entries()]
+      text:
+        typeof summary === "string" && summary ? summary : lastResult ? agentText(lastResult) : "",
+      files: [...files.entries()]
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([path, content]) => ({ path, content })),
+    });
+
+    // Never fail a finished run because cleanup failed — E2B reaps the sandbox on timeout.
+    await step.run("kill-sandbox", async () => {
+      try {
+        await killSandbox(sandboxId);
+        return true;
+      } catch (error) {
+        console.error("Failed to kill sandbox", error);
+        return false;
+      }
     });
 
     return { runId };

@@ -80,8 +80,8 @@ const textareaClass =
       <p class="text-muted-foreground text-sm">
         An <code>@inngest/agent-kit</code> agent on <code>deepseek-flash</code>, running inside the
         durable <code>coding-agent</code> function. The mutation sends the event and returns a run
-        ID; the page then streams the run's realtime channel. Tools write into a scratch workspace
-        that is discarded when the run ends.
+        ID; the page then streams the run's realtime channel. The agent's tools run in an E2B
+        sandbox that is destroyed when the run ends.
       </p>
     </header>
 

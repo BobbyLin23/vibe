@@ -56,13 +56,17 @@ and `INNGEST_SIGNING_KEY`.
 `/agent` runs a coding agent built with `@inngest/agent-kit` on DeepSeek's `deepseek-flash`
 model:
 
-- `inngest/agents/coding-agent.ts` — the agent plus its tools (`write_file`, `read_file`,
-  `list_files`). Each run gets its own in-memory scratch workspace, created inside the factory so
-  concurrent runs cannot see each other's files.
-- `inngest/functions.ts` — the durable `coding-agent` function. It runs the agent with
-  `agent.run(prompt, { step })`, so model calls become `step.ai.infer` steps that Inngest retries
-  and caches; tool calls report progress through `step.realtime.publish`, and an `onFailure`
-  handler publishes a failed result when the run exhausts its retries.
+- `inngest/agents/coding-agent.ts` — the agent, the sandbox helpers (`createSandbox`/`killSandbox`)
+  and its tools (`terminal`, `createOrUpdateFiles`, `readFiles`). Each run gets its own E2B
+  sandbox, so concurrent runs cannot see each other's files; the tools reconnect to it by ID on
+  every call and run inside `step.run` when Inngest step tools are available, so a retry replays
+  the recorded output instead of repeating the work.
+- `inngest/functions.ts` — the durable `coding-agent` function. It creates the sandbox in a
+  memoized `step.run`, runs the agent network with `network.run(prompt)` (network runs feed tool
+  results back into the model's history, which a standalone `agent.run` does not), publishes
+  progress through `step.realtime.publish`, publishes the result with every file the tools wrote,
+  and kills the sandbox. An `onFailure` handler publishes a failed result when the run exhausts
+  its retries.
 - `inngest/channels.ts` — the per-run realtime channel `coding-agent:<runId>` with `progress` and
   `result` topics.
 - `server/router/agent.ts` — `agent.run` (sends the event, returns the run ID) and
@@ -74,6 +78,19 @@ Set `DEEPSEEK_API_KEY` in `.env` (get one at <https://platform.deepseek.com/api_
 restart the dev server; without it, `agent.run` fails with the typed `MISSING_API_KEY` error.
 `DEEPSEEK_BASE_URL` points the agent at an OpenAI-compatible gateway or a local test server
 instead of `https://api.deepseek.com`.
+
+Set `E2B_API_KEY` too (get one at <https://e2b.dev/dashboard>); without it `agent.run` fails with
+the typed `MISSING_E2B_API_KEY` error. The sandbox boots from E2B's `base` template unless
+`E2B_TEMPLATE` names another one — point it at a template with Node (and any app dependencies)
+installed if the agent should be able to run a project's commands. Sandboxes created by a run are
+killed when it finishes; a run that fails before cleanup leaves its sandbox to E2B's ten-minute
+timeout.
+
+The E2B SDK is loaded through Node's resolver rather than bundled — its CommonJS build requires
+the ESM-only `chalk` and breaks the server when a bundler inlines it (see the comment on `e2b()`
+in `inngest/agents/coding-agent.ts`). A deployed server therefore needs
+`@e2b/code-interpreter` resolvable from the output directory, which the default node-server
+preset gets from the app's `node_modules`.
 
 Realtime channels are addressable by ID and this app has no authentication, so
 `agent.subscriptionToken` hands out a token for any run ID; a real app must check that the caller

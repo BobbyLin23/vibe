@@ -19,12 +19,19 @@ export const run = base
     MISSING_API_KEY: {
       message: "DEEPSEEK_API_KEY is not set — add it to .env and restart the dev server",
     },
+    MISSING_E2B_API_KEY: {
+      message: "E2B_API_KEY is not set — add it to .env and restart the dev server",
+    },
   })
   .input(z.object({ prompt: z.string().trim().min(1).max(4000) }))
   .output(z.object({ runId: z.string(), ids: z.array(z.string()) }))
   .handler(async ({ input, errors }) => {
     if (!env.DEEPSEEK_API_KEY) {
       throw errors.MISSING_API_KEY();
+    }
+
+    if (!env.E2B_API_KEY) {
+      throw errors.MISSING_E2B_API_KEY();
     }
 
     const runId = crypto.randomUUID();
