@@ -6,12 +6,6 @@ const examples = [
     description: "One query with a reactive input — no database, shows typed input and output.",
   },
   {
-    to: "/users",
-    title: "Users",
-    description:
-      "List, create and delete rows via Drizzle — queries, mutations and cache invalidation.",
-  },
-  {
     to: "/inngest",
     title: "Inngest",
     description:
