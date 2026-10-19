@@ -3,3 +3,6 @@ allowBuilds:
   inngest-cli: true
   protobufjs: true
   vue-demi: true
+permissions:
+  drizzle-kit:
+    skills: true
