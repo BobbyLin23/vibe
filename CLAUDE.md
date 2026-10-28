@@ -98,4 +98,4 @@ Flow: page mutation → `agent.run` sends `agent/coding.requested` with a fresh 
 
 ## Agent skills in this repo
 
-`.agents/skills/` contains fetched vendor skills (inngest, orpc, nuxt, nitro, pinia, vue, vueuse) tracked by `skills-lock.json`; `.claude/skills/` contains drizzle-kit skills. They are reference material, not project rules; `.agents` is excluded from oxfmt.
+`.agents/skills/` holds the vendored skill sources (inngest, orpc, nuxt, nitro, pinia, vue, vueuse), tracked by `skills-lock.json`. `.claude/skills/` is the directory Claude Code discovers, and it contains **symlinks**: one per `.agents/skills/<name>` directory (`../../.agents/skills/<name>`), plus the `pnpm-drizzle-kit-drizzle-*` symlinks that point into `node_modules`. Adding a skill means dropping it in `.agents/skills/` and symlinking it into `.claude/skills/` — do not duplicate the files. These are reference material, not project rules; `.agents` is excluded from oxfmt and `.agents/skills/.gitignore` excludes the `pnpm-*` links.
