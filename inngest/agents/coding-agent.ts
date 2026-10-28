@@ -158,6 +158,18 @@ export function killSandbox(sandboxId: string) {
 }
 
 /**
+ * Public URL of port 3000 inside the sandbox, where a run's app is expected to listen.
+ *
+ * `getHost` is derived from the sandbox ID and its domain, so the URL stays the same on a
+ * replay that reconnects to the same machine.
+ */
+export async function sandboxUrl(sandboxId: string) {
+  const sandbox = await connectSandbox(sandboxId);
+
+  return `https://${sandbox.getHost(3000)}`;
+}
+
+/**
  * Runs one tool call inside a memoized step when Inngest step tools are available, so a
  * retry replays the recorded output instead of repeating the sandbox work. Outside an
  * Inngest context there is no step and the call runs inline.
