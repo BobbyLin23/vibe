@@ -26,6 +26,86 @@ const SANDBOX_TIMEOUT_MS = 10 * 60_000;
 /** Model rounds one network run may take before it stops scheduling the agent. */
 const MAX_ITER = 15;
 
+/**
+ * One entry of the OpenAI-compatible `messages` array, as far as this file cares about it.
+ * Assistant turns are either prose or tool calls, and DeepSeek additionally returns its
+ * thinking in `reasoning_content`.
+ */
+type ChatMessage = {
+  role: string;
+  content?: string | null;
+  tool_calls?: unknown[];
+  reasoning_content?: string;
+};
+
+/**
+ * Joins the two assistant messages AgentKit records for a single model turn.
+ *
+ * AgentKit splits each inference result into one message per output kind, so an assistant
+ * reply that both explains itself and calls a tool reaches the history as a text-only
+ * message followed by a tool-call message. DeepSeek's thinking models reject that pair:
+ * the next call fails with 400 "The `reasoning_content` in the thinking mode must be passed
+ * back to the API", wherever `reasoning_content` is placed. Sending both parts as the single
+ * message DeepSeek itself returns is accepted, and keeps the model's own words as the
+ * `content` of its tool call.
+ */
+function joinAssistantTurns(messages: ChatMessage[]): ChatMessage[] {
+  const joined: ChatMessage[] = [];
+
+  for (const message of messages) {
+    const previous = joined.at(-1);
+
+    // Only prose folds into the following tool call; two tool-call messages in a row would
+    // lose the earlier calls if they were merged.
+    if (
+      previous?.role === "assistant" &&
+      !previous.tool_calls &&
+      message.role === "assistant" &&
+      message.tool_calls
+    ) {
+      const parts = [previous.content, message.content].filter(
+        (content): content is string => typeof content === "string" && content.trim() !== "",
+      );
+
+      joined[joined.length - 1] = {
+        ...message,
+        content: parts.length ? parts.join("\n\n") : null,
+        reasoning_content: message.reasoning_content ?? previous.reasoning_content,
+      };
+
+      continue;
+    }
+
+    joined.push(message);
+  }
+
+  return joined;
+}
+
+/**
+ * The DeepSeek model, with its history reshaped into turns DeepSeek accepts.
+ *
+ * `onCall` is the one hook that runs on both paths the SDK can take — a direct `fetch` and
+ * the dev server's `step.ai.infer` — so the rewrite applies wherever the run executes. It
+ * also runs before each retry, keeping replays on the same corrected shape.
+ */
+function createModel() {
+  const model = openai({
+    model: MODEL,
+    baseUrl: env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
+    apiKey: env.DEEPSEEK_API_KEY,
+  });
+
+  const onCall = model.onCall;
+
+  model.onCall = (target, body) => {
+    onCall?.(target, body);
+    body.messages = joinAssistantTurns(body.messages as ChatMessage[]) as typeof body.messages;
+  };
+
+  return model;
+}
+
 const SYSTEM_PROMPT = `You are a coding agent working in an E2B sandbox: a Linux workspace
 that you own for the duration of the run.
 
@@ -216,11 +296,7 @@ export function createCodingAgent({
     description: "Writes and runs code in an E2B sandbox, then explains it.",
     system: SYSTEM_PROMPT,
     tools: [terminal, createOrUpdateFiles, readFiles],
-    model: openai({
-      model: MODEL,
-      baseUrl: env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
-      apiKey: env.DEEPSEEK_API_KEY,
-    }),
+    model: createModel(),
     lifecycle: {
       onResponse: async ({ result, network }) => {
         const text = agentText(result);
