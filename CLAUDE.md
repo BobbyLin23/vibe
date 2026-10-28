@@ -49,19 +49,20 @@ Nuxt 4 app: application code in `app/`, Nitro server code in `server/`, backgrou
 Procedures are the entire backend surface; there are no hand-written REST endpoints except the Inngest handler.
 
 - [server/router/base.ts](server/router/base.ts) — shared `os.$context<{ headers?: Headers }>()` builder. Every procedure extends it.
-- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
-- [server/router/index.ts](server/router/index.ts) — manually assembled nested router (`{ agent, hello, inngest }`). **New procedures must be exported from their file and registered here**; nothing is auto-discovered.
+- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`, `messages.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
+- [server/router/index.ts](server/router/index.ts) — manually assembled nested router (`{ agent, hello, inngest, messages }`). **New procedures must be exported from their file and registered here**; nothing is auto-discovered.
 - [server/routes/rpc/[...].ts](server/routes/rpc/[...].ts) — serves the router over HTTP at `/rpc` via `RPCHandler`. `server/routes/rpc/index.ts` re-exports it so a bare `/rpc` request also matches.
 - [app/plugins/orpc.client.ts](app/plugins/orpc.client.ts) — browser: `RPCLink` → `/rpc`, provides `$client` (raw) and `$orpc` (Pinia Colada utils).
 - [app/plugins/orpc.server.ts](app/plugins/orpc.server.ts) — SSR: `createRouterClient(router)` in-process, so server rendering never makes an HTTP round trip.
 
-Pages call `useQuery(() => $orpc.x.y.queryOptions({ input }))` and `useMutation($orpc.x.y.mutationOptions({ onSuccess }))`; use a getter (not a plain value) when input is reactive. Invalidate with `$orpc.x.key()` after writes. Example pages: `/hello`, `/inngest`, `/agent`.
+Pages call `useQuery(() => $orpc.x.y.queryOptions({ input }))` and `useMutation($orpc.x.y.mutationOptions({ onSuccess }))`; use a getter (not a plain value) when input is reactive. Invalidate with `$orpc.x.key()` after writes. Example pages: `/hello`, `/inngest`, `/agent`, `/messages`.
 
 When adding a procedure, do both sides: the procedure file, the router registration, then the page. Types flow automatically through `RouterClient<typeof router>`.
 
 ### Database
 
-- [server/db/schema.ts](server/db/schema.ts) — Drizzle (`drizzle-orm` 1.0 RC) Postgres schema: `messages` (content, `message_type` enum `result|error`) and `fragments` (message-owned sandbox output: `sandboxUrl`, `title`, `files` jsonb, cascade delete).
+- [server/db/schema.ts](server/db/schema.ts) — Drizzle (`drizzle-orm` 1.0 RC) Postgres schema: `messages` (`content`, `message_role` enum `user|assistant`, `message_type` enum `result|error`) and `fragments` (message-owned sandbox output: `sandboxUrl`, `title`, `files` jsonb, one fragment per message, cascade delete).
+- `updatedAt` carries `.$onUpdate(() => new Date())`, mirroring Prisma's `@updatedAt`, so an update moves a row to the top of the newest-first list.
 - [server/db/relations.ts](server/db/relations.ts) — `defineRelations` for the v1 query builder (`db.query.*`). Only the `one` side (`fragments.message`) carries explicit `from`/`to`; the reverse `many` side infers it.
 - [server/db/index.ts](server/db/index.ts) — `drizzle()` over `drizzle-orm/neon-http` (stateless HTTP driver).
 - `drizzle.config.ts` points at `server/db/schema.ts`, outputs to `server/db/drizzle/` (no migration files committed yet — the workflow here is `db:push`, not generate/migrate).
@@ -71,10 +72,10 @@ When adding a procedure, do both sides: the procedure file, the router registrat
 ### Inngest
 
 - [inngest/client.ts](inngest/client.ts) — app id `vibe-development`.
-- [inngest/events.ts](inngest/events.ts) — events defined once with `eventType()` + Zod (`test/hello.world`, `agent/coding.requested`), shared by sender and trigger.
-- [inngest/functions.ts](inngest/functions.ts) — durable functions `hello-world` and `coding-agent`.
+- [inngest/events.ts](inngest/events.ts) — events defined once with `eventType()` + Zod (`test/hello.world`, `agent/coding.requested`, `code-agent/run`), shared by sender and trigger.
+- [inngest/functions.ts](inngest/functions.ts) — durable functions `hello-world`, `coding-agent` and `code-agent-run`.
 - [server/api/inngest.ts](server/api/inngest.ts) — `serve()` from `inngest/nuxt`; **new functions must be added to its `functions` array**.
-- Events are always sent from server procedures (`inngest.trigger`, `agent.run`), never from the browser, so the event key stays server-side.
+- Events are always sent from server procedures (`inngest.trigger`, `agent.run`, `messages.create`), never from the browser, so the event key stays server-side.
 - Connection failures are mapped to a typed `INNGEST_UNREACHABLE` oRPC error via `isConnectionRefused()` in [inngest/errors.ts](inngest/errors.ts) (walks the `cause` chain for `ECONNREFUSED`).
 - Inngest functions must be deterministic and side-effect-free outside `step.run`; use the `step` tools for retries to replay recorded output.
 
@@ -88,6 +89,17 @@ Flow: page mutation → `agent.run` sends `agent/coding.requested` with a fresh 
 - [inngest/channels.ts](inngest/channels.ts) — per-run channel with `progress` and `result` topics (Zod schemas; infer types with `typeof codingAgentChannel.$infer.progress`).
 - The `coding-agent` function is throttled to 30 runs/minute on a single `"deepseek"` key and has an `onFailure` handler that publishes a failed result.
 - No auth exists: `agent.subscriptionToken` mints a token for any run ID, and channels are addressable by ID. Any real deployment must check run ownership; the code comments this as a known gap.
+
+### Messages (`/messages`)
+
+The database-backed path, as opposed to the fire-and-forget realtime one on `/agent`. Both run the same agent through `createCodingAgent`; only the way the result reaches the browser differs.
+
+Flow: page mutation → `messages.create` inserts a `user`/`result` row, then sends `code-agent/run` with `{ value, messageId }` using the row ID as the event ID → durable `code-agent-run` creates a sandbox, runs the network, and records an `assistant` message plus its fragment → the page re-reads `messages.getMany`.
+
+- [server/router/messages.ts](server/router/messages.ts) — `getMany` (newest first, no fragments) and `create` (insert, then send). `create` deletes the row if the send fails, so a prompt never sits in the conversation with no run behind it.
+- `code-agent-run` writes the reply as an `error` message and skips the fragment when the agent wrote no files (`files.size === 0`), mirroring upstream's `isError` check.
+- `onFailure` records the failure reason as an `assistant`/`error` row, so a crashed run is visible in the conversation rather than only in the Inngest UI.
+- There is no live update: the page refetches on demand. `@pinia/colada` 1.4 has no `refetchInterval`, so polling would need a plugin or a realtime channel.
 
 ### UI
 

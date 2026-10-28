@@ -17,6 +17,12 @@ const examples = [
     description:
       "An AgentKit agent on DeepSeek inside a durable function — start a run, then stream its progress.",
   },
+  {
+    to: "/messages",
+    title: "Messages",
+    description:
+      "Store a prompt, let the code agent answer it, and read the conversation back from Postgres.",
+  },
 ];
 </script>
 
