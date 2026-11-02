@@ -17,7 +17,9 @@ const activeFragment = ref<Fragment | null>(null);
         />
       </ResizablePanel>
       <ResizableHandle with-handle />
-      <ResizablePanel :default-size="65" :min-size="50"> TODO: Preview </ResizablePanel>
+      <ResizablePanel :default-size="65" :min-size="50" class="min-h-0">
+        <ProjectsFragmentWeb v-if="activeFragment" :data="activeFragment" />
+      </ResizablePanel>
     </ResizablePanelGroup>
   </div>
 </template>

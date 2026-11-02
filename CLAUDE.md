@@ -80,9 +80,11 @@ When adding a procedure, do both sides: the procedure file, the router registrat
 
 ### Coding agent (`/agent`)
 
-Flow: page mutation → `agent.run` (or `projects.create`) sends `agent/coding.requested` with a fresh `runId` as both event ID (dedupe) and realtime channel ID → durable `coding-agent` function creates an E2B sandbox in a memoized `step.run`, runs an AgentKit network, publishes progress/results on `coding-agent:<runId>`, kills the sandbox → page fetches a subscription token and streams via `subscribe()` from `inngest/realtime`.
+Flow: page mutation → `agent.run` (or `projects.create`) sends `agent/coding.requested` with a fresh `runId` as both event ID (dedupe) and realtime channel ID → durable `coding-agent` function creates an E2B sandbox in a memoized `step.run`, runs an AgentKit network, publishes progress/results on `coding-agent:<runId>` → page fetches a subscription token and streams via `subscribe()` from `inngest/realtime`. On success the function mints the sandbox's port-3000 URL (`getPreviewUrl`) and keeps the sandbox alive so the preview stays reachable; only failed runs are killed.
 
-`projects.create` also creates the project, stores the prompt as its first `user` message, and includes `projectId` in the event. Project runs then save the assistant's reply (or failure) as a message and bump the project's `updatedAt`; the `/agent` demo omits `projectId` and stays message-free.
+`projects.create` also creates the project, stores the prompt as its first `user` message, and includes `projectId` in the event. Project runs then save the assistant's reply and a `fragments` row (`sandboxUrl`, `files`) — or a generic error message when the run produced no summary/files — and bump the project's `updatedAt`; the `/agent` demo omits `projectId` and stays message-free.
+
+The base E2B template has no server, so `getPreviewUrl` starts `python3 -m http.server 3000` in the workspace; a custom `E2B_TEMPLATE` that already listens on 3000 is left alone. When DeepSeek emits unparseable tool-call JSON, `network.run` throws an error that Inngest would otherwise retry against the same memoized model output, so the function ends the run and saves the failure instead.
 
 - [inngest/agents/coding-agent.ts](inngest/agents/coding-agent.ts) — agent, network, tools (`terminal`, `createOrUpdateFiles`, `readFiles`), sandbox helpers. Two non-obvious constraints:
   - **Run the agent through `network.run()`, not `agent.run()`** — only the network appends tool results to the model history; `agent.run` gets stuck after one write-then-explain pass.

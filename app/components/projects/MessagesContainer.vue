@@ -10,10 +10,13 @@ const { $orpc } = useNuxtApp();
 
 const bottomRef = ref<HTMLDivElement | null>(null);
 
+// `isPending` (not `isLoading`) so the 5s poll below doesn't flash "Loading messages…"
+// on every refetch — `isLoading` tracks every in-flight request, `isPending` only the
+// initial load with no data yet.
 const {
   data: messages,
   error,
-  isLoading,
+  isPending,
   refetch,
 } = useQuery(() => $orpc.messages.getMany.queryOptions({ input: { projectId: props.projectId } }));
 
@@ -36,7 +39,7 @@ const isLastMessageUser = computed(() => messages.value?.at(-1)?.role === "user"
   <div class="flex min-h-0 flex-1 flex-col">
     <div class="min-h-0 flex-1 overflow-y-auto">
       <div class="pt-2 pr-1">
-        <p v-if="isLoading" class="text-muted-foreground p-4 text-sm">Loading messages…</p>
+        <p v-if="isPending" class="text-muted-foreground p-4 text-sm">Loading messages…</p>
         <p v-else-if="error" class="text-destructive p-4 text-sm">{{ error.message }}</p>
 
         <ProjectsMessageCard

@@ -117,7 +117,13 @@ Tools:
 
 Work in small steps: write the files first, then use terminal to run and check them.
 Finish every reply with <task_summary>a short summary of what you did and how to run it
-</task_summary>. Put code in files — never paste a whole file into the reply.`;
+</task_summary>. Put code in files — never paste a whole file into the reply.
+
+Keep every createOrUpdateFiles call small: one file per call, roughly 150 lines at most.
+A tool call that grows past the model's output limit is cut off mid-JSON, which loses the
+whole call; for longer files, write the first part, then append the rest with the terminal
+(e.g. cat >> styles.css << 'EOF' ... EOF). For web pages, put index.html in the workspace
+root — the preview serves that directory on port 3000.`;
 
 /**
  * Loads the E2B SDK through Node's resolver instead of a static import.
@@ -148,6 +154,51 @@ function connectSandbox(sandboxId: string) {
   const { Sandbox } = e2b();
 
   return Sandbox.connect(sandboxId, { apiKey: env.E2B_API_KEY, timeoutMs: SANDBOX_TIMEOUT_MS });
+}
+
+/**
+ * Starts the workspace preview and returns its public URL.
+ *
+ * The base E2B template runs no server, so serve the workspace directory over HTTP. A
+ * custom template that already listens on port 3000 (the course's Next.js template) is
+ * left alone. Called only after a successful run, and the sandbox is kept alive for it,
+ * so the URL stays reachable until E2B reaps the sandbox.
+ */
+export async function getPreviewUrl(sandboxId: string): Promise<string> {
+  const sandbox = await connectSandbox(sandboxId);
+
+  const probe = await sandbox.commands.run(
+    "curl -sf -o /dev/null http://localhost:3000 && echo running || echo idle",
+  );
+
+  if (!probe.stdout.includes("running")) {
+    // Background handle: the server outlives this command, so nothing to await.
+    await sandbox.commands.run("python3 -m http.server 3000 --bind 0.0.0.0", {
+      background: true,
+    });
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const check = await sandbox.commands.run(
+        "curl -s -o /dev/null -w '%{http_code}' http://localhost:3000 || true",
+      );
+
+      if (check.stdout.trim() === "200") break;
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
+  return `https://${sandbox.getHost(3000)}`;
+}
+
+/**
+ * Whether the error came from the model emitting a tool call AgentKit cannot parse.
+ *
+ * The model response is memoized in an Inngest step, so a retry replays the same broken
+ * payload and fails identically — the run should end instead of burning its retries.
+ */
+export function isToolCallParseError(error: unknown) {
+  return error instanceof Error && error.message.startsWith("Failed to parse JSON");
 }
 
 /** Best-effort teardown so a finished run stops paying for sandbox seconds. */
