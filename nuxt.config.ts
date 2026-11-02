@@ -7,7 +7,7 @@ export default defineNuxtConfig({
   devServer: {
     port: 3012,
   },
-  css: ["~/assets/css/tailwind.css"],
+  css: ["~/assets/css/tailwind.css", "~/assets/css/code-theme.css"],
   vite: {
     plugins: [tailwindcss()],
   },
