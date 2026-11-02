@@ -1,48 +1,59 @@
 <script setup lang="ts">
-const examples = [
-  {
-    to: "/hello",
-    title: "Hello",
-    description: "One query with a reactive input — no database, shows typed input and output.",
-  },
-  {
-    to: "/inngest",
-    title: "Inngest",
-    description:
-      "Send a durable-function event through a mutation — the run finishes on the Inngest dev server.",
-  },
-  {
-    to: "/agent",
-    title: "Coding agent",
-    description:
-      "An AgentKit agent on DeepSeek inside a durable function — start a run, then stream its progress.",
-  },
-];
+import { toast } from "vue-sonner";
+
+const { $orpc } = useNuxtApp();
+const router = useRouter();
+
+const value = ref("");
+
+const { mutate: createProject, isLoading } = useMutation(
+  $orpc.projects.create.mutationOptions({
+    onError: (cause) => toast.error(cause.message),
+    onSuccess: (project) => router.push(`/projects/${project.id}`),
+  }),
+);
+
+function submit() {
+  if (!value.value.trim()) return;
+
+  createProject({ value: value.value });
+}
+
+const textareaClass =
+  "border-input focus-visible:border-ring focus-visible:ring-ring/50 min-h-24 w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-3";
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl space-y-8 p-8">
-    <header class="flex items-start justify-between gap-4">
-      <div class="space-y-1">
-        <h1 class="text-2xl font-semibold tracking-tight">oRPC + Pinia Colada</h1>
+  <div class="flex min-h-screen items-center justify-center p-8">
+    <div class="mx-auto flex w-full max-w-xl flex-col items-center gap-6">
+      <header class="space-y-2 text-center">
+        <h1 class="text-2xl font-semibold tracking-tight">What do you want to build?</h1>
         <p class="text-muted-foreground text-sm">
-          Procedures live in <code>server/router</code>, are called through <code>$client</code>,
-          and cached with <code>useQuery</code> / <code>useMutation</code>.
+          Your prompt creates a project and starts the coding agent. You can return to it later.
         </p>
-      </div>
-      <ModeToggle />
-    </header>
+      </header>
 
-    <div class="grid gap-4">
-      <NuxtLink
-        v-for="example in examples"
-        :key="example.to"
-        :to="example.to"
-        class="hover:bg-accent/50 rounded-lg border p-4 transition-colors"
-      >
-        <p class="font-medium">{{ example.title }}</p>
-        <p class="text-muted-foreground text-sm">{{ example.description }}</p>
-      </NuxtLink>
+      <form class="flex w-full flex-col gap-3" @submit.prevent="submit">
+        <textarea
+          v-model="value"
+          :class="textareaClass"
+          rows="3"
+          placeholder="Build a landing page for a coffee shop…"
+        />
+
+        <Button type="submit" :disabled="isLoading || !value.trim()">
+          {{ isLoading ? "Creating…" : "Submit" }}
+        </Button>
+      </form>
+
+      <p class="text-muted-foreground text-xs">
+        Demos:
+        <NuxtLink to="/hello" class="underline">Hello</NuxtLink>
+        ·
+        <NuxtLink to="/inngest" class="underline">Inngest</NuxtLink>
+        ·
+        <NuxtLink to="/agent" class="underline">Agent</NuxtLink>
+      </p>
     </div>
   </div>
 </template>
