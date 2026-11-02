@@ -13,6 +13,11 @@ import { codingAgentChannel } from "./channels";
 import { inngest } from "./client";
 import { codingAgentRequested, helloWorldEvent } from "./events";
 
+/** The `<task_summary>` marker is prompt protocol, not user-facing copy. */
+function stripTaskSummary(text: string) {
+  return text.replaceAll("<task_summary>", "").replaceAll("</task_summary>", "").trim();
+}
+
 export const helloWorld = inngest.createFunction(
   {
     id: "hello-world",
@@ -99,15 +104,28 @@ export const codingAgent = inngest.createFunction(
       console.error("Coding agent returned an unparseable tool call", error);
     }
 
-    const summary = result?.state.data.summary;
+    const summary = typeof result?.state.data.summary === "string" ? result.state.data.summary : "";
     const lastResult = result?.state.results.at(-1);
-    const text =
-      typeof summary === "string" && summary ? summary : lastResult ? agentText(lastResult) : "";
 
-    // As in the course: a run with no summary or no files did not build anything worth
-    // previewing, even if the network returned.
-    const isError = !result || typeof summary !== "string" || !summary || files.size === 0;
+    // A run that wrote files built something worth previewing even when the model never
+    // emitted its `<task_summary>` marker. DeepSeek keeps calling tools to self-check and
+    // can exhaust `MAX_ITER` without ever writing a final `content` message, which used to
+    // turn every such run into "Something went wrong".
+    const isError = !result || files.size === 0;
+    const fallbackText = lastResult ? agentText(lastResult) : "";
+    const text = isError
+      ? ""
+      : summary.trim()
+        ? stripTaskSummary(summary)
+        : fallbackText || `Built ${[...files.keys()].sort().join(", ")}.`;
     const failureText = "Something went wrong. Please try again.";
+
+    if (!isError && !summary.trim()) {
+      console.warn(
+        `Coding agent finished without a <task_summary> after ${result?.state.results.length ?? 0} ` +
+          `round(s); publishing ${files.size} file(s) with fallback text.`,
+      );
+    }
 
     // The preview URL points at a live sandbox, so it is only minted for successful runs.
     const sandboxUrl = isError

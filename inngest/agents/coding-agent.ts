@@ -10,6 +10,9 @@ import {
 import type { GetStepTools, Inngest } from "inngest";
 import { z } from "zod";
 import { env } from "~~/env";
+import { installToolCallJsonRepair } from "./tool-call-json";
+
+installToolCallJsonRepair();
 
 /**
  * DeepSeek's OpenAI-compatible endpoint. `deepseek-flash` is the current name of the
@@ -116,14 +119,21 @@ Tools:
   never start a server or another long-running process.
 
 Work in small steps: write the files first, then use terminal to run and check them.
-Finish every reply with <task_summary>a short summary of what you did and how to run it
-</task_summary>. Put code in files — never paste a whole file into the reply.
+You have a limited budget of about 12 model rounds, so spend them building, not polishing:
+after one or two quick checks, stop. Your final reply must contain no tool calls and must
+end with <task_summary>a short summary of what you did and how to run it</task_summary>.
+Do not keep re-running checks once the page works. Put code in files — never paste a whole
+file into the reply.
 
 Keep every createOrUpdateFiles call small: one file per call, roughly 150 lines at most.
 A tool call that grows past the model's output limit is cut off mid-JSON, which loses the
 whole call; for longer files, write the first part, then append the rest with the terminal
 (e.g. cat >> styles.css << 'EOF' ... EOF). For web pages, put index.html in the workspace
-root — the preview serves that directory on port 3000.`;
+root — the preview serves that directory on port 3000.
+
+Tool arguments are JSON: escape every double quote inside file content as \\" — for
+example class=\\"hero\\". Prefer single quotes for HTML attributes (class='hero') so
+there is nothing to escape.`;
 
 /**
  * Loads the E2B SDK through Node's resolver instead of a static import.
