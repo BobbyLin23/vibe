@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { generateSlug } from "random-word-slugs";
 import { z } from "zod";
 import { inngest } from "~~/inngest/client";
@@ -19,6 +19,20 @@ const projectSchema = z.object({
 export const getMany = base.output(z.array(projectSchema)).handler(async () => {
   return db.select().from(projects).orderBy(desc(projects.updatedAt));
 });
+
+export const getOne = base
+  .errors({ NOT_FOUND: { message: "Project not found" } })
+  .input(z.object({ id: z.string().min(1, { message: "Id is required" }) }))
+  .output(projectSchema)
+  .handler(async ({ input, errors }) => {
+    const [project] = await db.select().from(projects).where(eq(projects.id, input.id));
+
+    if (!project) {
+      throw errors.NOT_FOUND();
+    }
+
+    return project;
+  });
 
 /**
  * Creates a project from the first prompt, stores that prompt as its first message,

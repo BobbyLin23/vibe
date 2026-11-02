@@ -49,8 +49,8 @@ Nuxt 4 app: application code in `app/`, Nitro server code in `server/`, backgrou
 Procedures are the entire backend surface; there are no hand-written REST endpoints except the Inngest handler.
 
 - [server/router/base.ts](server/router/base.ts) — shared `os.$context<{ headers?: Headers }>()` builder. Every procedure extends it.
-- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`, `projects.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
-- [server/router/index.ts](server/router/index.ts) — manually assembled nested router (`{ agent, hello, inngest }`). **New procedures must be exported from their file and registered here**; nothing is auto-discovered.
+- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`, `projects.ts`, `messages.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
+- [server/router/index.ts](server/router/index.ts) — manually assembled nested router (`{ agent, hello, inngest, messages, projects }`). **New procedures must be exported from their file and registered here**; nothing is auto-discovered.
 - [server/routes/rpc/[...].ts](server/routes/rpc/[...].ts) — serves the router over HTTP at `/rpc` via `RPCHandler`. `server/routes/rpc/index.ts` re-exports it so a bare `/rpc` request also matches.
 - [app/plugins/orpc.client.ts](app/plugins/orpc.client.ts) — browser: `RPCLink` → `/rpc`, provides `$client` (raw) and `$orpc` (Pinia Colada utils).
 - [app/plugins/orpc.server.ts](app/plugins/orpc.server.ts) — SSR: `createRouterClient(router)` in-process, so server rendering never makes an HTTP round trip.
@@ -94,6 +94,7 @@ Flow: page mutation → `agent.run` (or `projects.create`) sends `agent/coding.r
 ### UI
 
 - shadcn-vue (new-york, neutral, remixicon) generated into [app/components/ui/](app/components/ui/), configured in `components.json`; `cn()` helper at [app/lib/utils.ts](app/lib/utils.ts).
+- Project conversation UI lives in [app/components/projects/](app/components/projects/): `View.vue` (auto-imported as `<ProjectsView>`) splits the page into a resizable message pane and a preview placeholder; `MessagesContainer` loads `messages.getMany`, and `MessageForm` calls `messages.create` then invalidates that query. The page validates the project with `projects.getOne` via `useAsyncData` (a cached query can't serialize a thrown oRPC error during SSR).
 - Tailwind CSS v4 via `@tailwindcss/vite` (no `tailwind.config`), tokens in [app/assets/css/tailwind.css](app/assets/css/tailwind.css). Dark mode via `@nuxtjs/color-mode` with `classSuffix: ""`.
 - [app/plugins/ssr-width.ts](app/plugins/ssr-width.ts) provides a fixed 1024px SSR width to `@vueuse/core` so media-query-dependent UI renders consistently server-side.
 - Path aliases: `~~/` → repo root, `#server/` → `server/`, `~/` and `@/` → `app/`.
