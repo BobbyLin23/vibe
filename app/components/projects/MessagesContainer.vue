@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import type { Fragment } from "./types";
+
 const props = defineProps<{ projectId: string }>();
+
+// Two-way so `View` can hand the selected fragment to the preview pane.
+const activeFragment = defineModel<Fragment | null>("activeFragment", { default: null });
 
 const { $orpc } = useNuxtApp();
 
@@ -9,9 +14,12 @@ const {
   data: messages,
   error,
   isLoading,
+  refetch,
 } = useQuery(() => $orpc.messages.getMany.queryOptions({ input: { projectId: props.projectId } }));
 
-// TODO: set the active fragment from the last assistant message.
+// TODO: Temporary live message updates until realtime replaces polling.
+useIntervalFn(() => void refetch(), 5000);
+
 watch(
   () => messages.value?.length ?? 0,
   async () => {
@@ -20,6 +28,8 @@ watch(
   },
   { immediate: true },
 );
+
+const isLastMessageUser = computed(() => messages.value?.at(-1)?.role === "user");
 </script>
 
 <template>
@@ -36,9 +46,11 @@ watch(
           :role="message.role"
           :fragment="message.fragment"
           :created-at="message.createdAt"
-          :is-active-fragment="false"
+          :is-active-fragment="activeFragment?.id === message.fragment?.id"
           :type="message.type"
+          @fragment-click="activeFragment = message.fragment"
         />
+        <ProjectsMessageLoading v-if="isLastMessageUser" />
         <div ref="bottomRef" />
       </div>
     </div>
