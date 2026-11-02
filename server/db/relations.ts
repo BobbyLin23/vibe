@@ -4,12 +4,21 @@ import * as schema from "./schema";
 /**
  * Relational config for the Drizzle v1 query builder (`db.query.*`).
  *
- * A message owns many fragments (`messages.id` ← `fragments.message_id`, cascade
- * delete). Only the `one` side carries the explicit column mapping; the reverse
- * `many` side infers it.
+ * A project owns many messages (`projects.id` ← `messages.project_id`, cascade
+ * delete), and a message owns many fragments (`messages.id` ← `fragments.message_id`,
+ * cascade delete). Only the `one` side carries the explicit column mapping; the
+ * reverse `many` side infers it.
  */
 export const relations = defineRelations(schema, (r) => ({
+  projects: {
+    messages: r.many.messages(),
+  },
   messages: {
+    project: r.one.projects({
+      from: r.messages.projectId,
+      to: r.projects.id,
+      optional: false,
+    }),
     fragments: r.many.fragments(),
   },
   fragments: {

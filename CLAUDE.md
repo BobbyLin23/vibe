@@ -49,7 +49,7 @@ Nuxt 4 app: application code in `app/`, Nitro server code in `server/`, backgrou
 Procedures are the entire backend surface; there are no hand-written REST endpoints except the Inngest handler.
 
 - [server/router/base.ts](server/router/base.ts) — shared `os.$context<{ headers?: Headers }>()` builder. Every procedure extends it.
-- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
+- `server/router/<domain>.ts` — procedures (`hello.ts`, `inngest.ts`, `agent.ts`, `projects.ts`). Each declares `.input(zod)`, `.output(zod)`, typed `.errors({ CODE: ... })`, then `.handler`. Handlers throw `errors.CODE()` so the client receives a typed error code.
 - [server/router/index.ts](server/router/index.ts) — manually assembled nested router (`{ agent, hello, inngest }`). **New procedures must be exported from their file and registered here**; nothing is auto-discovered.
 - [server/routes/rpc/[...].ts](server/routes/rpc/[...].ts) — serves the router over HTTP at `/rpc` via `RPCHandler`. `server/routes/rpc/index.ts` re-exports it so a bare `/rpc` request also matches.
 - [app/plugins/orpc.client.ts](app/plugins/orpc.client.ts) — browser: `RPCLink` → `/rpc`, provides `$client` (raw) and `$orpc` (Pinia Colada utils).
@@ -61,7 +61,7 @@ When adding a procedure, do both sides: the procedure file, the router registrat
 
 ### Database
 
-- [server/db/schema.ts](server/db/schema.ts) — Drizzle (`drizzle-orm` 1.0 RC) Postgres schema: `messages` (content, `message_type` enum `result|error`) and `fragments` (message-owned sandbox output: `sandboxUrl`, `title`, `files` jsonb, cascade delete).
+- [server/db/schema.ts](server/db/schema.ts) — Drizzle (`drizzle-orm` 1.0 RC) Postgres schema: `projects` (name, timestamps), `messages` (`projectId` cascade, content, `message_role` enum `user|assistant`, `message_type` enum `result|error`) and `fragments` (message-owned sandbox output: `sandboxUrl`, `title`, `files` jsonb, cascade delete).
 - [server/db/relations.ts](server/db/relations.ts) — `defineRelations` for the v1 query builder (`db.query.*`). Only the `one` side (`fragments.message`) carries explicit `from`/`to`; the reverse `many` side infers it.
 - [server/db/index.ts](server/db/index.ts) — `drizzle()` over `drizzle-orm/neon-http` (stateless HTTP driver).
 - `drizzle.config.ts` points at `server/db/schema.ts`, outputs to `server/db/drizzle/` (no migration files committed yet — the workflow here is `db:push`, not generate/migrate).
@@ -74,13 +74,15 @@ When adding a procedure, do both sides: the procedure file, the router registrat
 - [inngest/events.ts](inngest/events.ts) — events defined once with `eventType()` + Zod (`test/hello.world`, `agent/coding.requested`), shared by sender and trigger.
 - [inngest/functions.ts](inngest/functions.ts) — durable functions `hello-world` and `coding-agent`.
 - [server/api/inngest.ts](server/api/inngest.ts) — `serve()` from `inngest/nuxt`; **new functions must be added to its `functions` array**.
-- Events are always sent from server procedures (`inngest.trigger`, `agent.run`), never from the browser, so the event key stays server-side.
+- Events are always sent from server procedures (`inngest.trigger`, `agent.run`, `projects.create`), never from the browser, so the event key stays server-side.
 - Connection failures are mapped to a typed `INNGEST_UNREACHABLE` oRPC error via `isConnectionRefused()` in [inngest/errors.ts](inngest/errors.ts) (walks the `cause` chain for `ECONNREFUSED`).
 - Inngest functions must be deterministic and side-effect-free outside `step.run`; use the `step` tools for retries to replay recorded output.
 
 ### Coding agent (`/agent`)
 
-Flow: page mutation → `agent.run` sends `agent/coding.requested` with a fresh `runId` as both event ID (dedupe) and realtime channel ID → durable `coding-agent` function creates an E2B sandbox in a memoized `step.run`, runs an AgentKit network, publishes progress/results on `coding-agent:<runId>`, kills the sandbox → page fetches a subscription token and streams via `subscribe()` from `inngest/realtime`.
+Flow: page mutation → `agent.run` (or `projects.create`) sends `agent/coding.requested` with a fresh `runId` as both event ID (dedupe) and realtime channel ID → durable `coding-agent` function creates an E2B sandbox in a memoized `step.run`, runs an AgentKit network, publishes progress/results on `coding-agent:<runId>`, kills the sandbox → page fetches a subscription token and streams via `subscribe()` from `inngest/realtime`.
+
+`projects.create` also creates the project, stores the prompt as its first `user` message, and includes `projectId` in the event. Project runs then save the assistant's reply (or failure) as a message and bump the project's `updatedAt`; the `/agent` demo omits `projectId` and stays message-free.
 
 - [inngest/agents/coding-agent.ts](inngest/agents/coding-agent.ts) — agent, network, tools (`terminal`, `createOrUpdateFiles`, `readFiles`), sandbox helpers. Two non-obvious constraints:
   - **Run the agent through `network.run()`, not `agent.run()`** — only the network appends tool results to the model history; `agent.run` gets stuck after one write-then-explain pass.
