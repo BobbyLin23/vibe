@@ -10,7 +10,7 @@ const activeFragment = ref<Fragment | null>(null);
   <div class="h-screen">
     <ResizablePanelGroup direction="horizontal">
       <ResizablePanel :default-size="35" :min-size="20" class="flex min-h-0 flex-col">
-        <ProjectHeader :project-id="projectId" />
+        <ProjectsHeader :project-id="projectId" />
         <ProjectsMessagesContainer
           v-model:active-fragment="activeFragment"
           :project-id="projectId"
